@@ -3,6 +3,8 @@ using Akka.Hosting;
 using Akka.Remote.Hosting;
 using PbmClusterTailInProc.App;
 using Microsoft.Extensions.Hosting;
+using Petabridge.Cmd.Cluster;
+using Petabridge.Cmd.Host;
 
 var hostBuilder = new HostBuilder();
 
@@ -24,6 +26,21 @@ hostBuilder.ConfigureServices((context, services) =>
                     resolver.Props<TimerActor>(); // uses Msft.Ext.DI to inject reference to helloActor
                 var timerActor = system.ActorOf(timerActorProps, "timer-actor");
                 registry.Register<TimerActor>(timerActor);
+            })
+            .AddPetabridgeCmd(cmd =>
+            {
+                cmd.RegisterCommandPalette(ClusterCommands.Instance);
+            })
+            .AddStartup(async (system, registry) =>
+            {
+                var client = await PetabridgeCmd.Get(system).StartLocalClient();
+                var session = await client.ExecuteTextCommandAsync("cluster tail");
+                
+                // don't await the Session stream - need to let it run as detatched task.
+                session.Stream.RunForeach(cr =>
+                {
+                    Console.WriteLine(cr);
+                }, system);
             });
     });
 });
