@@ -1,4 +1,6 @@
-﻿using Akka.Hosting;
+﻿using Akka.Cluster.Hosting;
+using Akka.Hosting;
+using Akka.Remote.Hosting;
 using PbmClusterTailInProc.App;
 using Microsoft.Extensions.Hosting;
 
@@ -9,6 +11,8 @@ hostBuilder.ConfigureServices((context, services) =>
     services.AddAkka("MyActorSystem", (builder, sp) =>
     {
         builder
+            .WithRemoting("localhost", 8080)
+            .WithClustering(new ClusterOptions(){ Roles = new[]{ "app" }, SeedNodes = new[]{ "akka.tcp://MyActorSystem@localhost:8080" }})
             .WithActors((system, registry, resolver) =>
             {
                 var helloActor = system.ActorOf(Props.Create(() => new HelloActor()), "hello-actor");
